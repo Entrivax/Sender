@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Sender"
         mc:Ignorable="d"
-        Title="Sender v1.0" Height="263" Width="428">
+        Title="Sender v1.1" Height="263" Width="428">
     <Window.Resources>
         <local:ListToStringConverter x:Key="ListToStringConverter" />
         <local:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
@@ -26,6 +26,7 @@
         <CheckBox x:Name="ReceiveCheckBox" Content="Receive" IsChecked="{Binding IsReceiving}" Grid.Column="1" HorizontalAlignment="Left" Margin="10,89,0,0" VerticalAlignment="Top" IsEnabled="{Binding NotWorking}"/>
         <StackPanel Margin="10,10,10,0">
             <TextBox x:Name="FileBox" Height="23" Margin="0,0,0,5" TextWrapping="Wrap" Text="{Binding FileNames, Converter={StaticResource ListToStringConverter}}" Visibility="{Binding IsReceiving, Converter={StaticResource BoolToVisibilityConverter}}" IsEnabled="{Binding NotWorking}" VerticalAlignment="Top" IsReadOnly="True"/>
+            <TextBox x:Name="OutputBox" Height="23" Margin="0,0,0,5" TextWrapping="Wrap" Text="{Binding OutputFolder, UpdateSourceTrigger=PropertyChanged}" Visibility="{Binding IsNotReceiving, Converter={StaticResource BoolToVisibilityConverter}}" IsEnabled="{Binding NotWorking}" VerticalAlignment="Top" LostFocus="OutputBox_LostFocus"/>
             <TextBox x:Name="IpBox" Height="23" Margin="0,0,0,5" TextWrapping="Wrap" Text="127.0.0.1" VerticalAlignment="Top" Visibility="{Binding IsHost, Converter={StaticResource BoolToVisibilityConverter}}" IsEnabled="{Binding NotWorking}"/>
             <TextBox x:Name="PortBox" Height="23" Margin="0,0,0,5" TextWrapping="Wrap" Text="{Binding Port, Converter={StaticResource IntStringConverter}}" IsEnabled="{Binding NotWorking}" VerticalAlignment="Top"/>
             <ProgressBar x:Name="ProgressionBar" Height="10" Margin="0,0,0,5" VerticalAlignment="Top" IsIndeterminate="{Binding Awaiting}" Value="{Binding Progression}"/>

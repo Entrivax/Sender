@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Configuration;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -30,6 +31,7 @@ namespace Sender
         public MainWindow()
         {
             DataContext = this;
+            OutputFolder = ConfigurationManager.AppSettings.Get("outputFolder");
             InitializeComponent();
         }
 
@@ -45,7 +47,6 @@ namespace Sender
         public event PropertyChangedEventHandler PropertyChanged;
 
         private List<string> _fileNames;
-
         public List<string> FileNames
         {
             get => _fileNames;
@@ -53,6 +54,17 @@ namespace Sender
             {
                 _fileNames = value;
                 OnPropertyChanged("FileNames");
+            }
+        }
+
+        private string _outputFolder;
+        public string OutputFolder
+        {
+            get => _outputFolder;
+            set
+            {
+                _outputFolder = value;
+                OnPropertyChanged("OutputFolder");
             }
         }
 
@@ -75,7 +87,12 @@ namespace Sender
             {
                 _isReceiving = value;
                 OnPropertyChanged("IsReceiving");
+                OnPropertyChanged("IsNotReceiving");
             }
+        }
+        public bool IsNotReceiving
+        {
+            get => !_isReceiving;
         }
 
         private int _port = 25565;
@@ -140,16 +157,34 @@ namespace Sender
 
         private void ExploreButton_Click(object sender, RoutedEventArgs e)
         {
-            var dialog = new CommonOpenFileDialog("Select file or folder")
+            if (!IsReceiving)
             {
-                AllowNonFileSystemItems = true,
-                Multiselect = true,
-            };
+                var dialog = new CommonOpenFileDialog("Select file or folder")
+                {
+                    AllowNonFileSystemItems = true,
+                    Multiselect = true,
+                };
 
-            if (dialog.ShowDialog(this) == CommonFileDialogResult.Ok)
+                if (dialog.ShowDialog(this) == CommonFileDialogResult.Ok)
+                {
+                    var filenames = dialog.FileNames;
+                    FileNames = new List<string>(filenames);
+                }
+            }
+            else
             {
-                var filenames = dialog.FileNames;
-                FileNames = new List<string>(filenames);
+                var dialog = new CommonOpenFileDialog("Select file or folder")
+                {
+                    AllowNonFileSystemItems = true,
+                    IsFolderPicker = true,
+                    Multiselect = false,
+                };
+
+                if (dialog.ShowDialog(this) == CommonFileDialogResult.Ok)
+                {
+                    OutputFolder = dialog.FileName;
+                    SaveOutputFolder();
+                }
             }
         }
 
@@ -248,7 +283,12 @@ namespace Sender
                         var fileName = fileNames[iCpy];
                         var fileSize = fileSizes[iCpy];
 
-                        using (var fileStream = File.OpenWrite(fileName))
+                        var path = System.IO.Path.Combine(OutputFolder ?? "./", fileName);
+                        var dir = System.IO.Path.GetDirectoryName(path);
+                        if (!Directory.Exists(dir))
+                            Directory.CreateDirectory(dir);
+
+                        using (var fileStream = File.OpenWrite(path))
                         {
                             ulong offset = 0;
                             while (offset < fileSize)
@@ -363,6 +403,19 @@ namespace Sender
             }
             
             return files.Distinct().ToList();
+        }
+
+        private void OutputBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            SaveOutputFolder();
+        }
+
+        private void SaveOutputFolder()
+        {
+            Configuration config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+            config.AppSettings.Settings.Remove("outputFolder");
+            config.AppSettings.Settings.Add("outputFolder", OutputFolder);
+            config.Save(ConfigurationSaveMode.Minimal);
         }
     }
 
