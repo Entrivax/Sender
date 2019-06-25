@@ -291,18 +291,22 @@ namespace Sender
                         using (var fileStream = File.OpenWrite(path))
                         {
                             ulong offset = 0;
+                            var lastTime = DateTime.Now;
                             while (offset < fileSize)
                             {
                                 var buffer = reader.ReadBytes((int)Math.Min(fileSize - offset, 300000));
                                 offset += (ulong)buffer.Length;
 
+                                var speed = buffer.Length / (DateTime.Now - lastTime).TotalSeconds;
                                 Dispatcher.InvokeAsync(() =>
                                 {
                                     fileTransfers[iCpy].Progression = offset / (double)fileSize * 100;
                                     Progression = offset / (double)fileSize * 100;
+                                    fileTransfers[iCpy].Speed = (float)speed;
                                 });
 
                                 fileStream.Write(buffer, 0, buffer.Length);
+                                lastTime = DateTime.Now;
                             }
                             fileStream.Flush();
                         }
@@ -351,15 +355,19 @@ namespace Sender
                             var buffer = new byte[300000];
                             int read = 0;
                             int currentOffset = 0;
+                            var lastTime = DateTime.Now;
                             while ((read = fileStream.Read(buffer, 0, 300000)) > 0)
                             {
                                 writer.Write(buffer.Take(read).ToArray());
                                 currentOffset += read;
+                                var speed = read / (DateTime.Now - lastTime).TotalSeconds;
                                 Dispatcher.InvokeAsync(() =>
                                 {
                                     fileTransfers[iCpy].Progression = currentOffset / (double)fileSize * 100;
+                                    fileTransfers[iCpy].Speed = (float)speed;
                                     Progression = currentOffset / (double)fileSize * 100;
                                 });
+                                lastTime = DateTime.Now;
                             }
                         }
                     }
@@ -465,6 +473,19 @@ namespace Sender
         }
     }
 
+    public class ProgressionToVisibilityConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            return (value is double && (double)value > 0 && (double)value < 100) ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
     public class FileTransfer : INotifyPropertyChanged
     {
         protected void OnPropertyChanged(PropertyChangedEventArgs e)
@@ -497,6 +518,39 @@ namespace Sender
             {
                 _progression = value;
                 OnPropertyChanged("Progression");
+            }
+        }
+
+        private float _speed;
+        public float Speed
+        {
+            get => _speed;
+            set
+            {
+                _speed = value;
+                OnPropertyChanged("Speed");
+                OnPropertyChanged("SpeedString");
+            }
+        }
+        public string SpeedString
+        {
+            get {
+                if (_speed > 1000000000)
+                {
+                    return Math.Round(_speed * 0.000000001, 2).ToString(CultureInfo.InvariantCulture) + "GB/s";
+                }
+                else if (_speed > 1000000)
+                {
+                    return Math.Round(_speed * 0.000001, 2).ToString(CultureInfo.InvariantCulture) + "MB/s";
+                }
+                else if (_speed > 1000)
+                {
+                    return Math.Round(_speed * 0.001, 2).ToString(CultureInfo.InvariantCulture) + "kB/s";
+                }
+                else
+                {
+                    return Math.Round(_speed, 2).ToString(CultureInfo.InvariantCulture) + "B/s";
+                }
             }
         }
     }
